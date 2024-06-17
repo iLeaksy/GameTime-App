@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Download Time Calculator</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Game Download Time Calculator</h1>
+        <form id="speedForm">
+            <label for="uploadSpeed">Upload Speed (Mbps):</label>
+            <input type="number" id="uploadSpeed" name="uploadSpeed" required>
+
+            <label for="downloadSpeed">Download Speed (Mbps):</label>
+            <input type="number" id="downloadSpeed" name="downloadSpeed" required>
+
+            <button type="submit">Calculate</button>
+        </form>
+        <button id="sortButton" onclick="toggleSort()">Sort by Download Time</button>
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let ascending = true;
+
+        document.getElementById('speedForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const uploadSpeed = document.getElementById('uploadSpeed').value;
+            const downloadSpeed = document.getElementById('downloadSpeed').value;
+
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ uploadSpeed, downloadSpeed }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data);
+            });
+        });
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            data.forEach(game => {
+                const gameElement = document.createElement('div');
+                gameElement.className = 'game';
+                gameElement.innerHTML = `
+                    <p><strong>${game.name}</strong> (Size: ${game.size_gb} GB)</p>
+                    <p>Download Time: ${game.time}</p>
+                `;
+                resultsDiv.appendChild(gameElement);
+            });
+        }
+
+        function toggleSort() {
+            const resultsDiv = document.getElementById('results');
+            const games = Array.from(resultsDiv.getElementsByClassName('game'));
+            const sortedGames = games.sort((a, b) => {
+                const timeA = parseTime(a.querySelector('p:nth-child(2)').textContent);
+                const timeB = parseTime(b.querySelector('p:nth-child(2)').textContent);
+                return ascending ? timeA - timeB : timeB - timeA;
+            });
+            ascending = !ascending;
+            resultsDiv.innerHTML = '';
+            sortedGames.forEach(game => resultsDiv.appendChild(game));
+        }
+
+        function parseTime(timeStr) {
+            let totalSeconds = 0;
+            const parts = timeStr.match(/\d+ (days?|hours?|minutes?|seconds?)/g);
+            parts.forEach(part => {
+                const [value, unit] = part.split(' ');
+                const intValue = parseInt(value);
+                switch (unit) {
+                    case 'days':
+                    case 'day':
+                        totalSeconds += intValue * 86400;
+                        break;
+                    case 'hours':
+                    case 'hour':
+                        totalSeconds += intValue * 3600;
+                        break;
+                    case 'minutes':
+                    case 'minute':
+                        totalSeconds += intValue * 60;
+                        break;
+                    case 'seconds':
+                    case 'second':
+                        totalSeconds += intValue;
+                        break;
+                }
+            });
+            return totalSeconds;
+        }
+    </script>
+</body>
+</html>

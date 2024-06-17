@@ -1,0 +1,62 @@
+body {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    font-family: Arial, sans-serif;
+    margin: 50px;
+}
+
+.container {
+    max-width: 600px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+    color: #4da6ff;
+}
+
+label {
+    display: block;
+    margin: 15px 0 5px;
+    color: #4da6ff;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 20px;
+    background-color: #333;
+    border: 1px solid #4da6ff;
+    color: #f0f0f0;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #4da6ff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button#sortButton {
+    margin-top: 10px;
+    background-color: #007bff;
+}
+
+.results {
+    margin-top: 20px;
+}
+
+.game {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background-color: #333;
+    border: 1px solid #4da6ff;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.game p {
+    margin: 5px 0;
+}
