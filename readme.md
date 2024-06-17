@@ -1,7 +1,3 @@
-Certainly! Below is a template for your `README.md` file that you can use to describe your Flask web application:
-
----
-
 # Game Download Time Calculator
 
 This web application calculates the estimated download time for various popular games based on user-inputted download speed.
@@ -26,8 +22,8 @@ To run this application locally, follow these steps:
 
 1. **Clone Repository:**
    ```bash
-   git clone <repository-url>
-   cd game-download-time-calculator
+   git clone https://github.com/iLeaksy/GameTime-App.git
+   cd GameTime-App
    ```
 
 2. **Install Dependencies:**
@@ -53,8 +49,5 @@ To run this application locally, follow these steps:
 ![Screenshot 1](/screenshots/screenshot1.png)
 ![Screenshot 2](/screenshots/screenshot2.png)
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 
