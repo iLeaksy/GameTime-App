@@ -16,6 +16,9 @@
             <label for="downloadSpeed">Download Speed (Mbps):</label>
             <input type="number" id="downloadSpeed" name="downloadSpeed" required>
 
+            <label for="searchQuery">Search for a game:</label>
+            <input type="text" id="searchQuery" name="searchQuery">
+
             <button type="submit">Calculate</button>
         </form>
         <button id="sortButton" onclick="toggleSort()">Sort by Download Time</button>
@@ -30,23 +33,35 @@
 
             const uploadSpeed = document.getElementById('uploadSpeed').value;
             const downloadSpeed = document.getElementById('downloadSpeed').value;
+            const searchQuery = document.getElementById('searchQuery').value;
+
+            console.log('Submitting form', { uploadSpeed, downloadSpeed, searchQuery });
 
             fetch('/calculate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ uploadSpeed, downloadSpeed }),
+                body: JSON.stringify({ uploadSpeed, downloadSpeed, searchQuery }),
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Received response', data);
                 displayResults(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
         });
 
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = '';
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found.</p>';
+                return;
+            }
 
             data.forEach(game => {
                 const gameElement = document.createElement('div');
@@ -75,6 +90,8 @@
         function parseTime(timeStr) {
             let totalSeconds = 0;
             const parts = timeStr.match(/\d+ (days?|hours?|minutes?|seconds?)/g);
+            if (!parts) return totalSeconds;
+
             parts.forEach(part => {
                 const [value, unit] = part.split(' ');
                 const intValue = parseInt(value);

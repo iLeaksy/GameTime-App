@@ -1,34 +1,75 @@
+import os
+import json
+import re
 from flask import Flask, request, jsonify, render_template
+import requests
 
 app = Flask(__name__)
 
-games = [
-    {"name": "Fortnite", "size_gb": 90},
-    {"name": "Minecraft", "size_gb": 1},
-    {"name": "Call of Duty: Warzone", "size_gb": 175},
-    {"name": "League of Legends", "size_gb": 9},
-    {"name": "Valorant", "size_gb": 20},
-    {"name": "Apex Legends", "size_gb": 68},
-    {"name": "Among Us", "size_gb": 0.25},
-    {"name": "Counter-Strike: Global Offensive", "size_gb": 20},
-    {"name": "Genshin Impact", "size_gb": 30},
-    {"name": "PUBG", "size_gb": 30},
-    {"name": "Overwatch", "size_gb": 30},
-    {"name": "Grand Theft Auto V", "size_gb": 94},
-    {"name": "The Witcher 3: Wild Hunt", "size_gb": 50},
-    {"name": "Red Dead Redemption 2", "size_gb": 150},
-    {"name": "Cyberpunk 2077", "size_gb": 70},
-    {"name": "Rocket League", "size_gb": 20},
-    {"name": "FIFA 21", "size_gb": 50},
-    {"name": "Fall Guys", "size_gb": 2},
-    {"name": "Assassin's Creed Valhalla", "size_gb": 50},
-    {"name": "Destiny 2", "size_gb": 105},
-    {"name": "Battlefield V", "size_gb": 90},
-    {"name": "Rainbow Six Siege", "size_gb": 61},
-    {"name": "Madden NFL 21", "size_gb": 50},
-    {"name": "NBA 2K21", "size_gb": 121},
-    {"name": "The Sims 4", "size_gb": 40}
-]
+STEAM_MOST_PLAYED_URL = "https://api.steampowered.com/ISteamChartsService/GetMostPlayedGames/v1/"
+STEAM_APPDETAILS_URL = "https://store.steampowered.com/api/appdetails?appids="
+CACHE_FILE = 'most_played_games_cache.json'
+GAME_LIMIT = 25
+
+# Load game details cache from file
+if os.path.exists(CACHE_FILE):
+    with open(CACHE_FILE, 'r') as f:
+        game_details_cache = json.load(f)
+else:
+    game_details_cache = {}
+
+def fetch_most_played_games():
+    if not game_details_cache:
+        try:
+            response = requests.get(STEAM_MOST_PLAYED_URL)
+            response.raise_for_status()
+            data = response.json()
+            games = data["response"]["ranks"][:GAME_LIMIT]
+            for game in games:
+                appid = game["appid"]
+                # Fetch game details to get the name
+                details = fetch_game_details(appid)
+                game_details_cache[appid] = {
+                    "appid": appid,
+                    "name": details.get("name", "Unknown Game")
+                }
+            # Save to cache file
+            with open(CACHE_FILE, 'w') as f:
+                json.dump(game_details_cache, f)
+        except requests.RequestException as e:
+            print(f"Error fetching most played games: {e}")
+            return []
+    return list(game_details_cache.values())
+
+def fetch_game_details(appid):
+    if appid in game_details_cache and 'size_gb' in game_details_cache[appid]:
+        return game_details_cache[appid]
+
+    try:
+        response = requests.get(f"{STEAM_APPDETAILS_URL}{appid}")
+        response.raise_for_status()
+        data = response.json()
+        if data[str(appid)]["success"]:
+            game_data = data[str(appid)]["data"]
+            pc_requirements = game_data.get("pc_requirements", {})
+            size_gb = None
+            if "minimum" in pc_requirements:
+                storage_match = re.search(r"Storage:\s*(\d+\.?\d*)\s*GB", pc_requirements["minimum"])
+                if storage_match:
+                    size_gb = float(storage_match.group(1))
+            game_details_cache[appid] = {
+                "appid": appid,
+                "name": game_data.get("name", "Unknown Game"),
+                "size_gb": size_gb
+            }
+            # Save updated cache
+            with open(CACHE_FILE, 'w') as f:
+                json.dump(game_details_cache, f)
+            return game_details_cache[appid]
+        return {"appid": appid, "name": "Unknown Game", "size_gb": None}
+    except requests.RequestException as e:
+        print(f"Error fetching game details for appid {appid}: {e}")
+        return {"appid": appid, "name": "Unknown Game", "size_gb": None}
 
 def calculate_download_time(size_gb, speed_mbps):
     size_bits = size_gb * 8 * 1024 * 1024 * 1024
@@ -56,14 +97,28 @@ def index():
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
+    print('Received POST request to /calculate')
     data = request.get_json()
     download_speed = float(data['downloadSpeed'])
+    search_query = data.get('searchQuery', '').lower()
+
+    games = fetch_most_played_games()
+    print('Most played games:', games)
+
+    if search_query:
+        games = [game for game in games if search_query in game['name'].lower()]
 
     results = []
     for game in games:
-        time = calculate_download_time(game["size_gb"], download_speed)
-        results.append({"name": game["name"], "size_gb": game["size_gb"], "time": time})
+        size_gb = game.get("size_gb")
+        if size_gb is None:
+            game_details = fetch_game_details(game["appid"])
+            size_gb = game_details.get("size_gb")
+        if size_gb:
+            time = calculate_download_time(size_gb, download_speed)
+            results.append({"name": game["name"], "size_gb": size_gb, "time": time})
 
+    print('Calculated results:', results)
     return jsonify(results)
 
 if __name__ == '__main__':
