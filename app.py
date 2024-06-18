@@ -65,7 +65,10 @@ def fetch_game_details(appid):
             # Save updated cache
             with open(CACHE_FILE, 'w') as f:
                 json.dump(game_details_cache, f)
+            print(f"Fetched and cached details for appid {appid}: {game_details_cache[appid]}")
             return game_details_cache[appid]
+        else:
+            print(f"Failed to fetch details for appid {appid}: {data}")
         return {"appid": appid, "name": "Unknown Game", "size_gb": None}
     except requests.RequestException as e:
         print(f"Error fetching game details for appid {appid}: {e}")
